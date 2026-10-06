@@ -1,0 +1,1193 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Petualangan Aljabar - Game & Quiz Matematika Kelas 7 SMP</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <!-- Babel standalone for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #311042 100%);
+            min-height: 100vh;
+            color: #f8fafc;
+        }
+        .font-fredoka {
+            font-family: 'Fredoka', cursive;
+        }
+        .glass-card {
+            background: rgba(30, 41, 59, 0.75);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+        .glass-btn {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            transition: all 0.2s ease;
+        }
+        .glass-btn:hover {
+            background: rgba(255, 255, 255, 0.18);
+            transform: translateY(-2px);
+        }
+        .glow-purple {
+            box-shadow: 0 0 25px rgba(168, 85, 247, 0.35);
+        }
+        .glow-emerald {
+            box-shadow: 0 0 25px rgba(16, 185, 129, 0.35);
+        }
+        .glow-amber {
+            box-shadow: 0 0 25px rgba(245, 158, 11, 0.35);
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-10px) rotate(2deg); }
+        }
+        .animate-float {
+            animation: float 4s ease-in-out infinite;
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-8px); }
+            40%, 80% { transform: translateX(8px); }
+        }
+        .animate-shake {
+            animation: shake 0.4s ease-in-out;
+        }
+        @keyframes pulse-subtle {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.03); }
+        }
+        .animate-pulse-subtle {
+            animation: pulse-subtle 2s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body class="selection:bg-purple-500 selection:text-white">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        // Web Audio API Synthesizer for SFX
+        class SoundFX {
+            constructor() {
+                this.ctx = null;
+                this.muted = false;
+            }
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+            playTone(freq, type, duration, startGain = 0.3, endGain = 0.01) {
+                if (this.muted) return;
+                try {
+                    this.init();
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                    gain.gain.setValueAtTime(startGain, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(endGain, this.ctx.currentTime + duration);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + duration);
+                } catch(e){}
+            }
+            correct() {
+                if (this.muted) return;
+                this.playTone(523.25, 'triangle', 0.1, 0.3); // C5
+                setTimeout(() => this.playTone(659.25, 'triangle', 0.1, 0.3), 100); // E5
+                setTimeout(() => this.playTone(783.99, 'triangle', 0.25, 0.4), 200); // G5
+            }
+            wrong() {
+                if (this.muted) return;
+                this.playTone(220, 'sawtooth', 0.15, 0.3); // A3
+                setTimeout(() => this.playTone(174.61, 'sawtooth', 0.3, 0.3), 150); // F3
+            }
+            hit() {
+                if (this.muted) return;
+                this.playTone(150, 'square', 0.1, 0.4);
+            }
+            click() {
+                if (this.muted) return;
+                this.playTone(800, 'sine', 0.04, 0.1);
+            }
+            victory() {
+                if (this.muted) return;
+                const notes = [523.25, 659.25, 783.99, 1046.50];
+                notes.forEach((freq, idx) => {
+                    setTimeout(() => this.playTone(freq, 'triangle', 0.3, 0.3), idx * 120);
+                });
+            }
+        }
+
+        const sfx = new SoundFX();
+
+        // Question Bank for Grade 7 SMP Algebra
+        const STAGE_DATA = [
+            {
+                id: 1,
+                title: "Hutan Unsur Aljabar",
+                description: "Mengenal Variabel, Koefisien, Konstanta, dan Suku.",
+                bossName: "Suku-Gorgon",
+                bossAvatar: "🐉",
+                bossHp: 100,
+                color: "from-emerald-500 to-teal-700",
+                questions: [
+                    {
+                        id: "1_1",
+                        q: "Pada bentuk aljabar $5x - 7$, manakah yang merupakan variabel?",
+                        options: ["5", "x", "-7", "5x"],
+                        answer: "x",
+                        explanation: "Variabel adalah lambang pengganti suatu bilangan yang belum diketahui nilainya (biasanya berupa huruf kecil). Pada $5x - 7$, variabelnya adalah $x$."
+                    },
+                    {
+                        id: "1_2",
+                        q: "Berapakah koefisien dari $y$ pada bentuk aljabar $3x - 8y + 12$?",
+                        options: ["3", "8", "-8", "12"],
+                        answer: "-8",
+                        explanation: "Koefisien adalah angka yang melekat dan mengalikan variabel. Tanda minus $(-)$ milik angka di depannya, sehingga koefisien $y$ adalah $-8$."
+                    },
+                    {
+                        id: "1_3",
+                        q: "Manakah yang merupakan konstanta dari bentuk aljabar $2a^2 + 5a - 9$?",
+                        options: ["2", "5", "a", "-9"],
+                        answer: "-9",
+                        explanation: "Konstanta adalah suku yang berdiri sendiri dalam bentuk angka konstan dan tidak memuat variabel. Pada $2a^2 + 5a - 9$, konstantanya adalah $-9$."
+                    },
+                    {
+                        id: "1_4",
+                        q: "Ada berapa jumlah suku pada bentuk aljabar $4x^2 - 3x + 2y - 5$?",
+                        options: ["2", "3", "4", "5"],
+                        answer: "4",
+                        explanation: "Suku dipisahkan oleh tanda penjumlahan atau pengurangan. Suku-sukunya adalah $4x^2$, $-3x$, $2y$, dan $-5$. Jadi terdapat 4 suku."
+                    }
+                ]
+            },
+            {
+                id: 2,
+                title: "Lembah Suku Sejenis",
+                description: "Menyederhanakan, Menjumlahkan & Mengurangkan Aljabar.",
+                bossName: "Troll Sejenis",
+                bossAvatar: "👹",
+                bossHp: 100,
+                color: "from-blue-500 to-indigo-700",
+                questions: [
+                    {
+                        id: "2_1",
+                        q: "Sederhanakan bentuk aljabar berikut: $7x + 3x - 4x$",
+                        options: ["6x", "10x", "4x", "14x"],
+                        answer: "6x",
+                        explanation: "Suku-suku sejenis dapat langsung dijumlahkan/dikurangkan koefisiennya: $(7 + 3 - 4)x = 6x$."
+                    },
+                    {
+                        id: "2_2",
+                        q: "Hasil penyederhanaan dari $(5a + 3b) + (2a - 7b)$ adalah...",
+                        options: ["7a + 10b", "7a - 4b", "3a - 4b", "7a + 4b"],
+                        answer: "7a - 4b",
+                        explanation: "Kelompokkan suku sejenis:\n$a$: $5a + 2a = 7a$\n$b$: $3b - 7b = -4b$\nHasil akhir: $7a - 4b$."
+                    },
+                    {
+                        id: "2_3",
+                        q: "Kurangkan $(3x - 5)$ dari $(8x + 2)$!",
+                        options: ["5x + 7", "5x - 3", "11x - 3", "-5x - 7"],
+                        answer: "5x + 7",
+                        explanation: "Perhatikan frasa 'Kurangkan A dari B' berarti $B - A$:\n$(8x + 2) - (3x - 5) = 8x + 2 - 3x + 5 = (8x - 3x) + (2 + 5) = 5x + 7$."
+                    },
+                    {
+                        id: "2_4",
+                        q: "Bentuk sederhana dari $4x^2 - 2x + 5 - 3x^2 + 6x - 2$ adalah...",
+                        options: ["x^2 + 4x + 3", "7x^2 + 4x + 3", "x^2 - 8x + 3", "x^2 + 4x - 3"],
+                        answer: "x^2 + 4x + 3",
+                        explanation: "Kelompokkan suku berpangkat sama:\n$x^2$: $4x^2 - 3x^2 = x^2$\n$x$: $-2x + 6x = +4x$\nKonstanta: $5 - 2 = +3$\nHasil akhir: $x^2 + 4x + 3$."
+                    }
+                ]
+            },
+            {
+                id: 3,
+                title: "Gua Perkalian Distributif",
+                description: "Perkalian Aljabar & Sifat Distributif $a(bx + c)$.",
+                bossName: "Golem Perkalian",
+                bossAvatar: "🗿",
+                bossHp: 100,
+                color: "from-purple-500 to-pink-700",
+                questions: [
+                    {
+                        id: "3_1",
+                        q: "Hasil dari $3(2x - 5)$ adalah...",
+                        options: ["6x - 5", "6x - 15", "5x - 15", "6x + 15"],
+                        answer: "6x - 15",
+                        explanation: "Gunakan sifat distributif: $3 \\times 2x - 3 \\times 5 = 6x - 15$."
+                    },
+                    {
+                        id: "3_2",
+                        q: "Hasil perkalian dari $-4a(3a - 2b)$ adalah...",
+                        options: ["-12a^2 + 8ab", "-12a^2 - 8ab", "-12a + 8b", "12a^2 + 8ab"],
+                        answer: "-12a^2 + 8ab",
+                        explanation: "Kalikan setiap suku di dalam kurung:\n$-4a \\times 3a = -12a^2$\n$-4a \\times (-2b) = +8ab$\nGabungkan: $-12a^2 + 8ab$."
+                    },
+                    {
+                        id: "3_3",
+                        q: "Sederhanakan bentuk $2(3x + 4) + 3(x - 2)$!",
+                        options: ["9x + 2", "9x + 14", "6x + 2", "9x - 2"],
+                        answer: "9x + 2",
+                        explanation: "Jabarkan kurung terlebih dahulu:\n$2(3x+4) = 6x + 8$\n$3(x-2) = 3x - 6$\nJumlahkan: $6x + 8 + 3x - 6 = (6x+3x) + (8-6) = 9x + 2$."
+                    },
+                    {
+                        id: "3_4",
+                        q: "Hasil perkalian dari $(x + 3)(x + 5)$ adalah...",
+                        options: ["x^2 + 8x + 15", "x^2 + 15x + 8", "x^2 + 2x + 15", "2x + 8"],
+                        answer: "x^2 + 8x + 15",
+                        explanation: "Gunakan perkalian dua suku $(a+b)(c+d) = ac + ad + bc + bd$:\n$x \\cdot x + x \\cdot 5 + 3 \\cdot x + 3 \\cdot 5 = x^2 + 5x + 3x + 15 = x^2 + 8x + 15$."
+                    }
+                ]
+            },
+            {
+                id: 4,
+                title: "Candi Persamaan Linear (PLSV)",
+                description: "Menyelesaikan Persamaan Linear Satu Variabel.",
+                bossName: "Raja Variabel PLSV",
+                bossAvatar: "👑",
+                bossHp: 100,
+                color: "from-amber-500 to-orange-700",
+                questions: [
+                    {
+                        id: "4_1",
+                        q: "Jika $x + 8 = 15$, berapakah nilai $x$?",
+                        options: ["7", "23", "8", "-7"],
+                        answer: "7",
+                        explanation: "Kurangi kedua ruas dengan $8$:\n$x = 15 - 8 = 7$."
+                    },
+                    {
+                        id: "4_2",
+                        q: "Tentukan nilai $x$ yang memenuhi persamaan $3x - 5 = 13$!",
+                        options: ["6", "4", "18", "5"],
+                        answer: "6",
+                        explanation: "Langkah penyelesaian:\n$3x = 13 + 5$\n$3x = 18$\n$x = 18 / 3 = 6$."
+                    },
+                    {
+                        id: "4_3",
+                        q: "Selesaikan persamaan $5x - 4 = 2x + 11$!",
+                        options: ["5", "3", "15", "7"],
+                        answer: "5",
+                        explanation: "Kelompokkan variabel di ruas kiri dan konstanta di ruas kanan:\n$5x - 2x = 11 + 4$\n$3x = 15$\n$x = 5$."
+                    },
+                    {
+                        id: "4_4",
+                        q: "Nilai $y$ dari $2(y - 3) = 14$ adalah...",
+                        options: ["10", "7", "4", "8"],
+                        answer: "10",
+                        explanation: "Bagi kedua ruas dengan 2 atau jabarkan:\n$2y - 6 = 14$\n$2y = 14 + 6 = 20$\n$y = 10$."
+                    }
+                ]
+            },
+            {
+                id: 5,
+                title: "Puncak Pertidaksamaan & Soal Cerita",
+                description: "Aplikasi Aljabar, Umur, Luas, dan PtLSV.",
+                bossName: "Naga Aljabar Purba",
+                bossAvatar: "🐲",
+                bossHp: 120,
+                color: "from-red-600 to-rose-800",
+                questions: [
+                    {
+                        id: "5_1",
+                        q: "Penyelesaian dari pertidaksamaan $2x - 3 < 7$ adalah...",
+                        options: ["x < 5", "x > 5", "x < 2", "x < 10"],
+                        answer: "x < 5",
+                        explanation: "Tambahkan 3 pada kedua ruas: $2x < 10$\nBagi kedua ruas dengan 2: $x < 5$."
+                    },
+                    {
+                        id: "5_2",
+                        q: "Umur Ayah 3 kali umur Andi. Jika jumlah umur mereka adalah 48 tahun, berapakah umur Andi?",
+                        options: ["12 tahun", "16 tahun", "15 tahun", "36 tahun"],
+                        answer: "12 tahun",
+                        explanation: "Misalkan umur Andi $= x$.\nUmur Ayah $= 3x$.\n$x + 3x = 48 \\Rightarrow 4x = 48 \\Rightarrow x = 12$ tahun."
+                    },
+                    {
+                        id: "5_3",
+                        q: "Sebuah persegi panjang memiliki panjang $(x + 4)$ cm dan lebar $x$ cm. Jika kelilingnya $36$ cm, berapa nilai $x$?",
+                        options: ["7", "8", "10", "6"],
+                        answer: "7",
+                        explanation: "Keliling $= 2(p + l) = 36$\n$2((x+4) + x) = 36$\n$2(2x + 4) = 36 \\Rightarrow 4x + 8 = 36 \\Rightarrow 4x = 28 \\Rightarrow x = 7$ cm."
+                    },
+                    {
+                        id: "5_4",
+                        q: "Tiga bilangan bulat berurutan jumlahnya 45. Bilangan terkecil dari ketiga bilangan tersebut adalah...",
+                        options: ["14", "15", "16", "13"],
+                        answer: "14",
+                        explanation: "Misal bilangan itu: $n, n+1, n+2$.\nJumlah: $n + (n+1) + (n+2) = 3n + 3 = 45$.\n$3n = 42 \\Rightarrow n = 14$."
+                    }
+                ]
+            }
+        ];
+
+        const SPEED_RUN_QUESTIONS = [
+            { q: "Konstanta dari $4x - 9$ adalah...", options: ["-9", "4", "x", "9"], answer: "-9" },
+            { q: "Hasil dari $5x + 8x$ adalah...", options: ["13x", "13x^2", "40x", "3x"], answer: "13x" },
+            { q: "Koefisien dari $x$ pada $7 - 3x$ adalah...", options: ["-3", "7", "3", "x"], answer: "-3" },
+            { q: "Jika $2x = 14$, nilai $x = $...", options: ["7", "12", "28", "6"], answer: "7" },
+            { q: "Sederhanakan $4a - a$...", options: ["3a", "4", "a", "3"], answer: "3a" },
+            { q: "Sifat $a(b+c) = ab + ac$ disebut sifat...", options: ["Distributif", "Komutatif", "Asosiatif", "Identitas"], answer: "Distributif" },
+            { q: "Jika $x - 4 = 10$, maka $x = $...", options: ["14", "6", "40", "-6"], answer: "14" },
+            { q: "Hasil $2(x + 5)$ adalah...", options: ["2x + 10", "2x + 5", "x + 10", "7x"], answer: "2x + 10" },
+            { q: "Manakah suku yang sejenis dengan $3x^2$?", options: ["-5x^2", "3x", "3y^2", "3x^3"], answer: "-5x^2" },
+            { q: "Penyelesaian dari $3x > 12$ adalah...", options: ["x > 4", "x < 4", "x > 36", "x > 9"], answer: "x > 4" }
+        ];
+
+        // Main App Component
+        function App() {
+            const [activeTab, setActiveTab] = React.useState('adventure'); // adventure, speedrun, study, achievements
+            const [userXP, setUserXP] = React.useState(0);
+            const [userStars, setUserStars] = React.useState(0);
+            const [completedStages, setCompletedStages] = React.useState([]);
+            const [muted, setMuted] = React.useState(false);
+
+            // Active Stage State
+            const [currentStageIndex, setCurrentStageIndex] = React.useState(null);
+            const [questionIdx, setQuestionIdx] = React.useState(0);
+            const [bossHealth, setBossHealth] = React.useState(100);
+            const [playerHealth, setPlayerHealth] = React.useState(3); // 3 hearts
+            const [selectedOption, setSelectedOption] = React.useState(null);
+            const [isAnswerSubmitted, setIsAnswerSubmitted] = React.useState(false);
+            const [showExplanation, setShowExplanation] = React.useState(false);
+            const [stageCompleted, setStageCompleted] = React.useState(false);
+            const [isGameOver, setIsGameOver] = React.useState(false);
+            const [comboStreak, setComboStreak] = React.useState(0);
+
+            // Scratchpad Canvas modal
+            const [showScratchpad, setShowScratchpad] = React.useState(false);
+            const [drawColor, setDrawColor] = React.useState('#38bdf8');
+            const canvasRef = React.useRef(null);
+            const [isDrawing, setIsDrawing] = React.useState(false);
+
+            // Speed Run State
+            const [speedRunActive, setSpeedRunActive] = React.useState(false);
+            const [speedRunTime, setSpeedRunTime] = React.useState(60);
+            const [speedRunScore, setSpeedRunScore] = React.useState(0);
+            const [speedRunQuestionIdx, setSpeedRunQuestionIdx] = React.useState(0);
+            const [speedRunHighscore, setSpeedRunHighscore] = React.useState(
+                parseInt(localStorage.getItem('algebra_speed_hs') || '0')
+            );
+
+            // Toggle Audio
+            const toggleMute = () => {
+                sfx.muted = !muted;
+                setMuted(!muted);
+            };
+
+            // Scratchpad drawing logic
+            React.useEffect(() => {
+                if (showScratchpad && canvasRef.current) {
+                    const canvas = canvasRef.current;
+                    const ctx = canvas.getContext('2d');
+                    ctx.strokeStyle = drawColor;
+                    ctx.lineWidth = 3;
+                    ctx.lineCap = 'round';
+                }
+            }, [showScratchpad, drawColor]);
+
+            const startDrawing = (e) => {
+                setIsDrawing(true);
+                const canvas = canvasRef.current;
+                const ctx = canvas.getContext('2d');
+                ctx.strokeStyle = drawColor;
+                ctx.lineWidth = 3;
+                ctx.lineCap = 'round';
+                const rect = canvas.getBoundingClientRect();
+                const x = (e.clientX || (e.touches && e.touches[0].clientX)) - rect.left;
+                const y = (e.clientY || (e.touches && e.touches[0].clientY)) - rect.top;
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+            };
+
+            const draw = (e) => {
+                if (!isDrawing) return;
+                const canvas = canvasRef.current;
+                const ctx = canvas.getContext('2d');
+                const rect = canvas.getBoundingClientRect();
+                const x = (e.clientX || e.touches[0].clientX) - rect.left;
+                const y = (e.clientY || e.touches[0].clientY) - rect.top;
+                ctx.lineTo(x, y);
+                ctx.stroke();
+            };
+
+            const stopDrawing = () => {
+                setIsDrawing(false);
+            };
+
+            const clearScratchpad = () => {
+                if (canvasRef.current) {
+                    const canvas = canvasRef.current;
+                    const ctx = canvas.getContext('2d');
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                }
+            };
+
+            // Start an Adventure Stage
+            const startStage = (stageIdx) => {
+                sfx.click();
+                setCurrentStageIndex(stageIdx);
+                setQuestionIdx(0);
+                setBossHealth(STAGE_DATA[stageIdx].bossHp);
+                setPlayerHealth(3);
+                setSelectedOption(null);
+                setIsAnswerSubmitted(false);
+                setShowExplanation(false);
+                setStageCompleted(false);
+                setIsGameOver(false);
+                setComboStreak(0);
+            };
+
+            // Submit Answer in Stage
+            const handleOptionClick = (option) => {
+                if (isAnswerSubmitted) return;
+                sfx.click();
+                setSelectedOption(option);
+            };
+
+            const submitAnswer = () => {
+                if (!selectedOption || isAnswerSubmitted) return;
+
+                setIsAnswerSubmitted(true);
+                const currentStage = STAGE_DATA[currentStageIndex];
+                const currentQ = currentStage.questions[questionIdx];
+                const isCorrect = selectedOption === currentQ.answer;
+
+                if (isCorrect) {
+                    sfx.correct();
+                    sfx.hit();
+                    const damage = Math.ceil(currentStage.bossHp / currentStage.questions.length);
+                    const newBossHp = Math.max(0, bossHealth - damage);
+                    setBossHealth(newBossHp);
+                    setComboStreak(prev => prev + 1);
+                    setUserXP(prev => prev + 25 + (comboStreak * 5));
+
+                    if (newBossHp === 0 || questionIdx === currentStage.questions.length - 1) {
+                        setTimeout(() => {
+                            sfx.victory();
+                            confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
+                            setStageCompleted(true);
+                            if (!completedStages.includes(currentStage.id)) {
+                                setCompletedStages([...completedStages, currentStage.id]);
+                                setUserStars(prev => prev + 3);
+                            }
+                        }, 800);
+                    }
+                } else {
+                    sfx.wrong();
+                    setComboStreak(0);
+                    const newHp = playerHealth - 1;
+                    setPlayerHealth(newHp);
+
+                    if (newHp === 0) {
+                        setTimeout(() => {
+                            setIsGameOver(true);
+                        }, 600);
+                    }
+                }
+            };
+
+            const nextQuestion = () => {
+                sfx.click();
+                setSelectedOption(null);
+                setIsAnswerSubmitted(false);
+                setShowExplanation(false);
+                setQuestionIdx(prev => prev + 1);
+            };
+
+            // Speed Run Logic
+            const startSpeedRun = () => {
+                sfx.click();
+                setSpeedRunActive(true);
+                setSpeedRunTime(60);
+                setSpeedRunScore(0);
+                setSpeedRunQuestionIdx(0);
+            };
+
+            React.useEffect(() => {
+                let timer;
+                if (speedRunActive && speedRunTime > 0) {
+                    timer = setInterval(() => {
+                        setSpeedRunTime(prev => prev - 1);
+                    }, 1000);
+                } else if (speedRunTime === 0 && speedRunActive) {
+                    setSpeedRunActive(false);
+                    sfx.victory();
+                    if (speedRunScore > speedRunHighscore) {
+                        setSpeedRunHighscore(speedRunScore);
+                        localStorage.setItem('algebra_speed_hs', speedRunScore.toString());
+                        confetti({ particleCount: 100 });
+                    }
+                }
+                return () => clearInterval(timer);
+            }, [speedRunActive, speedRunTime, speedRunScore, speedRunHighscore]);
+
+            const handleSpeedRunAnswer = (option) => {
+                const currentQ = SPEED_RUN_QUESTIONS[speedRunQuestionIdx % SPEED_RUN_QUESTIONS.length];
+                if (option === currentQ.answer) {
+                    sfx.correct();
+                    setSpeedRunScore(prev => prev + 10);
+                    setUserXP(prev => prev + 5);
+                } else {
+                    sfx.wrong();
+                }
+                setSpeedRunQuestionIdx(prev => prev + 1);
+            };
+
+            // User Level Calculation
+            const level = Math.floor(userXP / 100) + 1;
+            const xpProgress = userXP % 100;
+
+            return (
+                <div class="max-w-5xl mx-auto px-4 py-6">
+                    {/* TOP HEADER */}
+                    <header class="glass-card rounded-2xl p-4 mb-6 flex flex-wrap items-center justify-between gap-4 border-b border-purple-500/30">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-xl bg-gradient-to-tr from-purple-600 to-indigo-500 flex items-center justify-center text-2xl font-bold shadow-lg shadow-purple-500/30 animate-pulse-subtle">
+                                📐
+                            </div>
+                            <div>
+                                <h1 class="font-fredoka text-xl sm:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-300 via-pink-300 to-amber-200">
+                                    Petualangan Aljabar SMP
+                                </h1>
+                                <p class="text-xs text-slate-400">Matematika Kelas 7 • Kurikulum Merdeka</p>
+                            </div>
+                        </div>
+
+                        {/* Player Profile Stats */}
+                        <div class="flex items-center gap-4 bg-slate-900/60 px-4 py-2 rounded-xl border border-slate-700/50">
+                            <div class="flex items-center gap-2">
+                                <span class="text-amber-400 text-lg">⭐</span>
+                                <div>
+                                    <div class="text-xs text-slate-400">Bintang</div>
+                                    <div class="font-bold text-amber-300 text-sm">{userStars}</div>
+                                </div>
+                            </div>
+                            <div class="h-8 w-[1px] bg-slate-700"></div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-purple-400 text-lg">⚡</span>
+                                <div>
+                                    <div class="text-xs text-slate-400">Level {level}</div>
+                                    <div class="w-20 bg-slate-800 rounded-full h-2 overflow-hidden border border-slate-700 mt-1">
+                                        <div class="bg-gradient-to-r from-purple-500 to-pink-500 h-full transition-all duration-300" style={{width: `${xpProgress}%`}}></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <button onClick={toggleMute} class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm transition" title="Toggle Sound">
+                                {muted ? '🔇' : '🔊'}
+                            </button>
+                        </div>
+                    </header>
+
+                    {/* MAIN NAVIGATION TABS */}
+                    {currentStageIndex === null && (
+                        <nav class="flex flex-wrap gap-2 mb-6">
+                            <button 
+                                onClick={() => { sfx.click(); setActiveTab('adventure'); }}
+                                class={`px-5 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 transition ${activeTab === 'adventure' ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-600/30' : 'glass-btn text-slate-300'}`}
+                            >
+                                🗡️ Petualangan Bos
+                            </button>
+                            <button 
+                                onClick={() => { sfx.click(); setActiveTab('speedrun'); }}
+                                class={`px-5 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 transition ${activeTab === 'speedrun' ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg shadow-amber-500/30' : 'glass-btn text-slate-300'}`}
+                            >
+                                ⚡ Mode Kilat (60s)
+                            </button>
+                            <button 
+                                onClick={() => { sfx.click(); setActiveTab('study'); }}
+                                class={`px-5 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 transition ${activeTab === 'study' ? 'bg-gradient-to-r from-teal-500 to-emerald-600 text-white shadow-lg shadow-teal-500/30' : 'glass-btn text-slate-300'}`}
+                            >
+                                📚 Rangkuman & Rumus
+                            </button>
+                            <button 
+                                onClick={() => { sfx.click(); setActiveTab('achievements'); }}
+                                class={`px-5 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 transition ${activeTab === 'achievements' ? 'bg-gradient-to-r from-pink-500 to-rose-600 text-white shadow-lg shadow-pink-500/30' : 'glass-btn text-slate-300'}`}
+                            >
+                                🏆 Prestasi & Skor
+                            </button>
+                        </nav>
+                    )}
+
+                    {/* CONTENT CONTAINER */}
+                    <main>
+                        {/* TAB 1: ADVENTURE STAGE SELECTOR */}
+                        {currentStageIndex === null && activeTab === 'adventure' && (
+                            <div class="space-y-6">
+                                <div class="glass-card p-6 rounded-2xl border border-purple-500/20 bg-gradient-to-br from-slate-900/90 via-slate-900/80 to-purple-950/40">
+                                    <h2 class="text-xl font-bold font-fredoka text-purple-200 mb-2 flex items-center gap-2">
+                                        ⚔️ Peta Misi Aljabar Kelas 7
+                                    </h2>
+                                    <p class="text-sm text-slate-300">
+                                        Kalahkan para Monster Aljabar dengan menyelesaikan soal-soal matematika! Setiap jawaban benar akan menyerang monster.
+                                    </p>
+                                </div>
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                                    {STAGE_DATA.map((stg, idx) => {
+                                        const isDone = completedStages.includes(stg.id);
+                                        const isLocked = idx > 0 && !completedStages.includes(STAGE_DATA[idx-1].id);
+
+                                        return (
+                                            <div 
+                                                key={stg.id}
+                                                class={`glass-card rounded-2xl p-5 border transition flex flex-col justify-between relative overflow-hidden ${
+                                                    isLocked ? 'opacity-60 grayscale border-slate-800' : 'hover:border-purple-400 hover:shadow-xl hover:shadow-purple-500/10 cursor-pointer border-slate-700/60'
+                                                }`}
+                                            >
+                                                <div class={`absolute -top-12 -right-12 w-32 h-32 rounded-full bg-gradient-to-br ${stg.color} opacity-20 blur-xl`}></div>
+
+                                                <div>
+                                                    <div class="flex items-center justify-between mb-3">
+                                                        <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-800 text-purple-300 border border-purple-500/30">
+                                                            Tahap {stg.id}
+                                                        </span>
+                                                        {isDone && <span class="text-sm text-amber-400 font-bold flex items-center gap-1">⭐ ⭐ ⭐</span>}
+                                                        {isLocked && <span class="text-xs bg-slate-800 text-slate-400 px-2 py-0.5 rounded">🔒 Terkunci</span>}
+                                                    </div>
+
+                                                    <div class="flex items-center gap-3 mb-3">
+                                                        <div class="text-4xl animate-float">{stg.bossAvatar}</div>
+                                                        <div>
+                                                            <h3 class="font-bold text-lg text-slate-100">{stg.title}</h3>
+                                                            <p class="text-xs text-rose-400 font-semibold">Bos: {stg.bossName}</p>
+                                                        </div>
+                                                    </div>
+
+                                                    <p class="text-xs text-slate-300 mb-4">{stg.description}</p>
+                                                </div>
+
+                                                <button
+                                                    disabled={isLocked}
+                                                    onClick={() => startStage(idx)}
+                                                    class={`w-full py-2.5 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2 ${
+                                                        isLocked 
+                                                            ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                                                            : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-md shadow-purple-600/30'
+                                                    }`}
+                                                >
+                                                    {isDone ? '🔄 Main Lagi' : isLocked ? '🔒 Selesaikan Tahap Sebelum' : '⚔️ Mulai Bertarung'}
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* ACTIVE GAMEPLAY SCREEN (BOSS BATTLE) */}
+                        {currentStageIndex !== null && (
+                            <div class="space-y-6">
+                                {/* Back & Top Game Bar */}
+                                <div class="flex items-center justify-between">
+                                    <button 
+                                        onClick={() => { sfx.click(); setCurrentStageIndex(null); }}
+                                        class="glass-btn px-4 py-2 rounded-xl text-xs font-bold text-slate-300 flex items-center gap-2"
+                                    >
+                                        ⬅️ Kembali ke Peta
+                                    </button>
+
+                                    <div class="flex items-center gap-2 bg-slate-900/80 px-4 py-1.5 rounded-xl border border-slate-700">
+                                        <span class="text-xs text-slate-400">Nyawa Ksatria:</span>
+                                        <div class="flex gap-1 text-base">
+                                            {[...Array(3)].map((_, i) => (
+                                                <span key={i} class={i < playerHealth ? 'opacity-100 scale-100 transition' : 'opacity-20 scale-75 transition'}>
+                                                    ❤️
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <button 
+                                        onClick={() => setShowScratchpad(true)}
+                                        class="bg-cyan-600 hover:bg-cyan-500 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-lg shadow-cyan-600/20 transition"
+                                    >
+                                        ✏️ Papan Coret-Coret
+                                    </button>
+                                </div>
+
+                                {/* BOSS & PLAYER STATUS DISPLAY */}
+                                <div class="glass-card rounded-2xl p-6 border border-purple-500/30 bg-gradient-to-b from-slate-900/90 to-purple-950/30 relative overflow-hidden">
+                                    <div class="flex flex-col sm:flex-row items-center justify-between gap-6">
+                                        {/* Player Card */}
+                                        <div class="flex items-center gap-4">
+                                            <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-3xl shadow-lg shadow-indigo-500/30">
+                                                🧙‍♂️
+                                            </div>
+                                            <div>
+                                                <div class="font-bold text-slate-100">Ksatria Aljabar</div>
+                                                <div class="text-xs text-purple-300">Level {level} • XP Bonus +{comboStreak * 5}</div>
+                                                {comboStreak > 1 && (
+                                                    <span class="inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 animate-bounce">
+                                                        🔥 Combo x{comboStreak}!
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div class="font-fredoka text-2xl font-bold text-purple-400">VS</div>
+
+                                        {/* Boss Card */}
+                                        <div class="flex items-center gap-4 text-right">
+                                            <div>
+                                                <div class="font-bold text-slate-100">{STAGE_DATA[currentStageIndex].bossName}</div>
+                                                <div class="text-xs text-rose-300">HP Bos: {bossHealth} / {STAGE_DATA[currentStageIndex].bossHp}</div>
+                                                <div class="w-36 bg-slate-800 rounded-full h-3 overflow-hidden border border-slate-700 mt-1">
+                                                    <div 
+                                                        class="bg-gradient-to-r from-rose-500 to-red-600 h-full transition-all duration-500"
+                                                        style={{ width: `${(bossHealth / STAGE_DATA[currentStageIndex].bossHp) * 100}%` }}
+                                                    ></div>
+                                                </div>
+                                            </div>
+                                            <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-rose-600 to-red-800 flex items-center justify-center text-4xl shadow-lg shadow-rose-600/30 animate-float">
+                                                {STAGE_DATA[currentStageIndex].bossAvatar}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* GAME OVER STATE */}
+                                {isGameOver && (
+                                    <div class="glass-card rounded-2xl p-8 text-center border-2 border-rose-500/50 bg-slate-900/95 space-y-4 animate-shake">
+                                        <div class="text-5xl">💀</div>
+                                        <h2 class="text-2xl font-bold text-rose-400 font-fredoka">Ksatria Terkalahkan!</h2>
+                                        <p class="text-sm text-slate-300 max-w-md mx-auto">
+                                            Jangan berkecil hati! Pelajari kembali rumus aljabar di tab Rangkuman lalu coba lagi.
+                                        </p>
+                                        <div class="flex justify-center gap-3 pt-2">
+                                            <button 
+                                                onClick={() => startStage(currentStageIndex)}
+                                                class="px-6 py-2.5 rounded-xl font-bold text-sm bg-rose-600 hover:bg-rose-500 text-white shadow-lg shadow-rose-600/30 transition"
+                                            >
+                                                🔄 Coba Lagi
+                                            </button>
+                                            <button 
+                                                onClick={() => setCurrentStageIndex(null)}
+                                                class="glass-btn px-6 py-2.5 rounded-xl font-bold text-sm text-slate-300"
+                                            >
+                                                🗺️ Ke Peta
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* STAGE COMPLETED VICTORY STATE */}
+                                {stageCompleted && (
+                                    <div class="glass-card rounded-2xl p-8 text-center border-2 border-amber-500/50 bg-slate-900/95 space-y-4">
+                                        <div class="text-6xl animate-bounce">🏆</div>
+                                        <h2 class="text-3xl font-bold text-amber-300 font-fredoka">Kemenangan Gemilang!</h2>
+                                        <p class="text-sm text-slate-200">
+                                            Kamu telah mengalahkan <span class="font-bold text-rose-400">{STAGE_DATA[currentStageIndex].bossName}</span> dan menguasai materi {STAGE_DATA[currentStageIndex].title}!
+                                        </p>
+                                        <div class="flex items-center justify-center gap-2 text-2xl py-2">
+                                            ⭐ ⭐ ⭐
+                                        </div>
+                                        <div class="flex justify-center gap-3 pt-2">
+                                            <button 
+                                                onClick={() => {
+                                                    if (currentStageIndex < STAGE_DATA.length - 1) {
+                                                        startStage(currentStageIndex + 1);
+                                                    } else {
+                                                        setCurrentStageIndex(null);
+                                                    }
+                                                }}
+                                                class="px-6 py-2.5 rounded-xl font-bold text-sm bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white shadow-lg shadow-teal-500/30 transition"
+                                            >
+                                                {currentStageIndex < STAGE_DATA.length - 1 ? '⚔️ Lanjut ke Tahap Berikutnya' : '🗺️ Kembali ke Peta Utama'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* ACTIVE QUESTION DISPLAY */}
+                                {!isGameOver && !stageCompleted && (
+                                    <div class="glass-card rounded-2xl p-6 border border-slate-700/80 space-y-6">
+                                        <div class="flex items-center justify-between text-xs text-slate-400 border-b border-slate-800 pb-3">
+                                            <span>Soal #{questionIdx + 1} dari {STAGE_DATA[currentStageIndex].questions.length}</span>
+                                            <span class="text-purple-300 font-medium">{STAGE_DATA[currentStageIndex].title}</span>
+                                        </div>
+
+                                        {/* Question Text */}
+                                        <div class="text-lg sm:text-xl font-semibold text-slate-100 leading-relaxed bg-slate-900/50 p-5 rounded-xl border border-slate-800">
+                                            {STAGE_DATA[currentStageIndex].questions[questionIdx].q}
+                                        </div>
+
+                                        {/* Options Grid */}
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            {STAGE_DATA[currentStageIndex].questions[questionIdx].options.map((opt, i) => {
+                                                const currentQ = STAGE_DATA[currentStageIndex].questions[questionIdx];
+                                                let btnStyle = "glass-btn text-slate-200 border-slate-700 hover:border-purple-400";
+                                                
+                                                if (selectedOption === opt) {
+                                                    btnStyle = "bg-purple-600/40 border-purple-400 text-white font-bold ring-2 ring-purple-500/50";
+                                                }
+
+                                                if (isAnswerSubmitted) {
+                                                    if (opt === currentQ.answer) {
+                                                        btnStyle = "bg-emerald-600/40 border-emerald-400 text-emerald-200 font-bold ring-2 ring-emerald-500/50";
+                                                    } else if (selectedOption === opt) {
+                                                        btnStyle = "bg-rose-600/40 border-rose-400 text-rose-200 font-bold";
+                                                    }
+                                                }
+
+                                                return (
+                                                    <button
+                                                        key={i}
+                                                        disabled={isAnswerSubmitted}
+                                                        onClick={() => handleOptionClick(opt)}
+                                                        class={`p-4 rounded-xl text-left text-sm transition flex items-center justify-between ${btnStyle}`}
+                                                    >
+                                                        <span>{opt}</span>
+                                                        <span class="text-xs opacity-50">{['A', 'B', 'C', 'D'][i]}</span>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+
+                                        {/* Action Buttons & Explanation */}
+                                        <div class="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4">
+                                            {!isAnswerSubmitted ? (
+                                                <button
+                                                    disabled={!selectedOption}
+                                                    onClick={submitAnswer}
+                                                    class={`w-full sm:w-auto px-8 py-3 rounded-xl font-bold text-sm transition ${
+                                                        selectedOption 
+                                                            ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-lg shadow-purple-600/30' 
+                                                            : 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                                                    }`}
+                                                >
+                                                    ⚔️ Serang Bos!
+                                                </button>
+                                            ) : (
+                                                <div class="w-full flex flex-col sm:flex-row items-center justify-between gap-3">
+                                                    <button
+                                                        onClick={() => setShowExplanation(!showExplanation)}
+                                                        class="text-xs text-purple-300 underline hover:text-purple-200"
+                                                    >
+                                                        {showExplanation ? 'Sembunyikan Pembahasan' : '💡 Lihat Pembahasan Soal'}
+                                                    </button>
+
+                                                    <button
+                                                        onClick={nextQuestion}
+                                                        class="w-full sm:w-auto px-8 py-3 rounded-xl font-bold text-sm bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white shadow-lg shadow-teal-500/30 transition"
+                                                    >
+                                                        Soal Berikutnya ➡️
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Pembahasan Box */}
+                                        {isAnswerSubmitted && showExplanation && (
+                                            <div class="p-4 rounded-xl bg-purple-950/40 border border-purple-500/30 text-xs sm:text-sm text-purple-200 leading-relaxed space-y-2 animate-pulse-subtle">
+                                                <div class="font-bold text-amber-300 flex items-center gap-1">
+                                                    💡 Pembahasan Matematika:
+                                                </div>
+                                                <p class="whitespace-pre-line">{STAGE_DATA[currentStageIndex].questions[questionIdx].explanation}</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* TAB 2: SPEED RUN MODE (60s) */}
+                        {currentStageIndex === null && activeTab === 'speedrun' && (
+                            <div class="space-y-6">
+                                <div class="glass-card p-6 rounded-2xl border border-amber-500/30 bg-gradient-to-br from-slate-900 via-amber-950/20 to-slate-900">
+                                    <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+                                        <div>
+                                            <h2 class="text-2xl font-bold font-fredoka text-amber-300 flex items-center gap-2">
+                                                ⚡ Tantangan Kilat Aljabar 60 Detik
+                                            </h2>
+                                            <p class="text-sm text-slate-300 mt-1">
+                                                Jawab soal sebanyak-banyaknya dalam 60 detik! Latih kecepatan dan ketepatan hitunganmu.
+                                            </p>
+                                        </div>
+                                        <div class="text-center bg-slate-900/80 px-5 py-3 rounded-2xl border border-amber-500/30">
+                                            <div class="text-xs text-slate-400">Skor Tertinggi</div>
+                                            <div class="text-2xl font-bold text-amber-400">{speedRunHighscore} Poin</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {!speedRunActive ? (
+                                    <div class="glass-card p-10 rounded-2xl text-center space-y-5 border border-slate-700">
+                                        <div class="text-6xl animate-bounce">⏱️</div>
+                                        <h3 class="text-xl font-bold text-slate-100">Siap Menguji Kecepatanmu?</h3>
+                                        <p class="text-sm text-slate-300 max-w-md mx-auto">
+                                            Setiap jawaban benar bernilai +10 Poin dan +5 XP. Soal akan terus berganti hingga waktu habis!
+                                        </p>
+                                        <button
+                                            onClick={startSpeedRun}
+                                            class="px-8 py-3.5 rounded-xl font-bold text-base bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white shadow-xl shadow-amber-500/30 transition transform hover:scale-105"
+                                        >
+                                            🚀 Mulai Tantangan Sekarang!
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div class="glass-card p-6 rounded-2xl border border-slate-700 space-y-6">
+                                        {/* Timer & Score Bar */}
+                                        <div class="flex items-center justify-between bg-slate-900/80 p-4 rounded-xl border border-slate-800">
+                                            <div class="flex items-center gap-2">
+                                                <span class="text-2xl">⏳</span>
+                                                <div>
+                                                    <div class="text-xs text-slate-400">Sisa Waktu</div>
+                                                    <div class={`text-xl font-bold ${speedRunTime <= 10 ? 'text-rose-400 animate-pulse' : 'text-amber-300'}`}>
+                                                        {speedRunTime} Detik
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="text-right">
+                                                <div class="text-xs text-slate-400">Skor Saat Ini</div>
+                                                <div class="text-xl font-bold text-emerald-400">{speedRunScore} Poin</div>
+                                            </div>
+                                        </div>
+
+                                        {/* Question */}
+                                        {SPEED_RUN_QUESTIONS[speedRunQuestionIdx % SPEED_RUN_QUESTIONS.length] && (
+                                            <div class="space-y-4">
+                                                <div class="text-lg font-bold text-slate-100 bg-slate-900/60 p-5 rounded-xl border border-slate-800 text-center">
+                                                    {SPEED_RUN_QUESTIONS[speedRunQuestionIdx % SPEED_RUN_QUESTIONS.length].q}
+                                                </div>
+
+                                                <div class="grid grid-cols-2 gap-3">
+                                                    {SPEED_RUN_QUESTIONS[speedRunQuestionIdx % SPEED_RUN_QUESTIONS.length].options.map((opt, i) => (
+                                                        <button
+                                                            key={i}
+                                                            onClick={() => handleSpeedRunAnswer(opt)}
+                                                            class="glass-btn p-4 rounded-xl text-center font-bold text-sm text-slate-200 border-slate-700 hover:border-amber-400 hover:bg-amber-500/10 transition"
+                                                        >
+                                                            {opt}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* TAB 3: RANGKUMAN & RUMUS MATERI ALSIABAR */}
+                        {currentStageIndex === null && activeTab === 'study' && (
+                            <div class="space-y-6">
+                                <div class="glass-card p-6 rounded-2xl border border-teal-500/30 bg-gradient-to-br from-slate-900 via-teal-950/20 to-slate-900">
+                                    <h2 class="text-2xl font-bold font-fredoka text-teal-300 flex items-center gap-2">
+                                        📚 Rangkuman Ringkas Aljabar Kelas 7
+                                    </h2>
+                                    <p class="text-sm text-slate-300 mt-1">
+                                        Panduan konsep penting untuk persiapan Ulangan Harian & Asesmen Matematika.
+                                    </p>
+                                </div>
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    {/* Concept Card 1 */}
+                                    <div class="glass-card p-5 rounded-2xl border border-slate-700 space-y-3">
+                                        <div class="flex items-center gap-2 text-emerald-400 font-bold text-base">
+                                            <span>🔍</span> Unsur-Unsur Bentuk Aljabar
+                                        </div>
+                                        <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800 text-center text-lg font-mono text-amber-300">
+                                            <span class="text-rose-400">5</span><span class="text-indigo-400">x</span> <span class="text-slate-400">-</span> <span class="text-emerald-400">7</span>
+                                        </div>
+                                        <ul class="text-xs text-slate-300 space-y-2 list-disc list-inside leading-relaxed">
+                                            <li><strong class="text-indigo-300">Variabel:</strong> Lambang berupa huruf (seperti $x, y, a, b$) pengganti nilai belum diketahui.</li>
+                                            <li><strong class="text-rose-300">Koefisien:</strong> Angka pengali yang melekat pada variabel (contoh: angka $5$ pada $5x$).</li>
+                                            <li><strong class="text-emerald-300">Konstanta:</strong> Suku berupa angka murni tanpa variabel (contoh: $-7$).</li>
+                                        </ul>
+                                    </div>
+
+                                    {/* Concept Card 2 */}
+                                    <div class="glass-card p-5 rounded-2xl border border-slate-700 space-y-3">
+                                        <div class="flex items-center gap-2 text-cyan-400 font-bold text-base">
+                                            <span>🧮</span> Suku Sejenis & Operasi
+                                        </div>
+                                        <div class="text-xs text-slate-300 space-y-2 leading-relaxed">
+                                            <p>
+                                                <strong>Suku Sejenis:</strong> Suku yang memiliki variabel DAN pangkat variabel yang sama persis.
+                                            </p>
+                                            <div class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800 text-xs text-cyan-200">
+                                                Contoh: $3x$ dan $-8x$ (Sejenis)<br/>
+                                                $4x^2$ dan $4x$ (BUKAN Sejenis karena beda pangkat)
+                                            </div>
+                                            <p class="text-slate-400">
+                                                *Ingat: Hanya suku sejenis yang bisa dijumlahkan atau dikurangkan!
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Concept Card 3 */}
+                                    <div class="glass-card p-5 rounded-2xl border border-slate-700 space-y-3">
+                                        <div class="flex items-center gap-2 text-purple-400 font-bold text-base">
+                                            <span>🔄</span> Sifat Distributif Perkalian
+                                        </div>
+                                        <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800 text-xs font-mono text-purple-200 text-center">
+                                            a(b + c) = ab + ac
+                                        </div>
+                                        <p class="text-xs text-slate-300 leading-relaxed">
+                                            Perkalian suku satu dengan dua suku diselesaikan dengan mengalikan angka di luar kurung ke setiap suku di dalam kurung.
+                                        </p>
+                                    </div>
+
+                                    {/* Concept Card 4 */}
+                                    <div class="glass-card p-5 rounded-2xl border border-slate-700 space-y-3">
+                                        <div class="flex items-center gap-2 text-amber-400 font-bold text-base">
+                                            <span>⚖️</span> Persamaan Linear (PLSV)
+                                        </div>
+                                        <p class="text-xs text-slate-300 leading-relaxed">
+                                            Tujuan PLSV adalah menyendirikan variabel di satu ruas dengan melakukan operasi yang sama pada kedua ruas (tambah/kurang/kali/bagi).
+                                        </p>
+                                        <div class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800 text-xs text-amber-200 space-y-1">
+                                            <div>$2x + 4 = 10$</div>
+                                            <div>$2x = 10 - 4 = 6$</div>
+                                            <div>$x = 6 / 2 = 3$</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* TAB 4: ACHIEVEMENTS & STATS */}
+                        {currentStageIndex === null && activeTab === 'achievements' && (
+                            <div class="space-y-6">
+                                <div class="glass-card p-6 rounded-2xl border border-pink-500/30 bg-gradient-to-br from-slate-900 via-pink-950/20 to-slate-900">
+                                    <h2 class="text-2xl font-bold font-fredoka text-pink-300 flex items-center gap-2">
+                                        🏆 Pencapaian & Lencana Ksatria
+                                    </h2>
+                                    <p class="text-sm text-slate-300 mt-1">
+                                        Kumpulkan semua bintang dan selesaikan tantangan untuk membuka lencana baru!
+                                    </p>
+                                </div>
+
+                                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                                    <div class={`glass-card p-4 rounded-xl border flex items-center gap-3 ${completedStages.length >= 1 ? 'border-amber-500/50 bg-amber-500/10' : 'border-slate-800 opacity-50'}`}>
+                                        <div class="text-3xl">🌱</div>
+                                        <div>
+                                            <div class="font-bold text-sm text-slate-100">Pemula Aljabar</div>
+                                            <div class="text-xs text-slate-400">Selesaikan Tahap 1</div>
+                                        </div>
+                                    </div>
+
+                                    <div class={`glass-card p-4 rounded-xl border flex items-center gap-3 ${completedStages.length >= 3 ? 'border-purple-500/50 bg-purple-500/10' : 'border-slate-800 opacity-50'}`}>
+                                        <div class="text-3xl">⚔️</div>
+                                        <div>
+                                            <div class="font-bold text-sm text-slate-100">Pembasmi Monster</div>
+                                            <div class="text-xs text-slate-400">Selesaikan 3 Tahap Bos</div>
+                                        </div>
+                                    </div>
+
+                                    <div class={`glass-card p-4 rounded-xl border flex items-center gap-3 ${completedStages.length >= 5 ? 'border-emerald-500/50 bg-emerald-500/10' : 'border-slate-800 opacity-50'}`}>
+                                        <div class="text-3xl">👑</div>
+                                        <div>
+                                            <div class="font-bold text-sm text-slate-100">Master Aljabar SMP</div>
+                                            <div class="text-xs text-slate-400">Tamatkan Semua Tahap</div>
+                                        </div>
+                                    </div>
+
+                                    <div class={`glass-card p-4 rounded-xl border flex items-center gap-3 ${speedRunHighscore >= 50 ? 'border-orange-500/50 bg-orange-500/10' : 'border-slate-800 opacity-50'}`}>
+                                        <div class="text-3xl">⚡</div>
+                                        <div>
+                                            <div class="font-bold text-sm text-slate-100">Kecepatan Kilat</div>
+                                            <div class="text-xs text-slate-400">Mencapai 50+ Poin Mode Kilat</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </main>
+
+                    {/* MODAL: INTERACTIVE SCRATCHPAD (Papan Coret-Coret) */}
+                    {showScratchpad && (
+                        <div class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+                            <div class="glass-card w-full max-w-2xl rounded-2xl border border-cyan-500/40 bg-slate-900 p-4 space-y-4">
+                                <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                                    <h3 class="font-bold text-cyan-300 flex items-center gap-2">
+                                        ✏️ Papan Coret-Coret Ksatria (Coret Math)
+                                    </h3>
+                                    <button 
+                                        onClick={() => setShowScratchpad(false)}
+                                        class="text-slate-400 hover:text-white text-lg font-bold"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+
+                                <div class="bg-slate-950 rounded-xl overflow-hidden border border-slate-800 flex justify-center">
+                                    <canvas 
+                                        ref={canvasRef}
+                                        width={560}
+                                        height={320}
+                                        onMouseDown={startDrawing}
+                                        onMouseMove={draw}
+                                        onMouseUp={stopDrawing}
+                                        onMouseLeave={stopDrawing}
+                                        onTouchStart={startDrawing}
+                                        onTouchMove={draw}
+                                        onTouchEnd={stopDrawing}
+                                        class="cursor-crosshair touch-none bg-slate-950"
+                                    ></canvas>
+                                </div>
+
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-xs text-slate-400">Warna:</span>
+                                        {['#38bdf8', '#facc15', '#f472b6', '#ffffff'].map((col) => (
+                                            <button
+                                                key={col}
+                                                onClick={() => setDrawColor(col)}
+                                                class={`w-6 h-6 rounded-full border-2 transition ${drawColor === col ? 'border-white scale-110 shadow-md' : 'border-transparent opacity-60 hover:opacity-100'}`}
+                                                style={{ backgroundColor: col }}
+                                                title={`Pilih Warna ${col}`}
+                                            />
+                                        ))}
+                                    </div>
+
+                                    <div class="flex items-center gap-2">
+                                        <button 
+                                            onClick={clearScratchpad}
+                                            class="px-3.5 py-2 rounded-xl text-xs font-bold bg-rose-600/30 text-rose-300 border border-rose-500/40 hover:bg-rose-600/50 transition"
+                                        >
+                                            🗑️ Hapus
+                                        </button>
+
+                                        <button 
+                                            onClick={() => setShowScratchpad(false)}
+                                            class="px-5 py-2 rounded-xl text-xs font-bold bg-cyan-600 text-white hover:bg-cyan-500 transition"
+                                        >
+                                            Selesai
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* FIXED BRANDING WATERMARK - GAME DEPRY */}
+                    <div class="fixed bottom-3 right-4 z-40 pointer-events-none select-none bg-slate-900/85 backdrop-blur-md px-3.5 py-1.5 rounded-xl border border-purple-500/30 shadow-xl flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                        <span class="font-fredoka text-xs sm:text-sm font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 via-pink-300 to-amber-300">
+                            Game Depry
+                        </span>
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    </script>
+</body>
+</html>
